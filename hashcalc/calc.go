@@ -2,7 +2,6 @@ package hashcalc
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	// "log"
@@ -22,8 +21,8 @@ import (
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	"github.com/ipfs/go-ipfs-pinner/dspinner"
 	"github.com/ipfs/go-ipfs/core/coreunix"
+	ipld "github.com/ipfs/go-ipld-format"
 	mdag "github.com/ipfs/go-merkledag"
-	dagtest "github.com/ipfs/go-merkledag/test"
 	ft "github.com/ipfs/go-unixfs"
 	"github.com/ipfs/interface-go-ipfs-core/options"
 	mh "github.com/multiformats/go-multihash"
@@ -36,12 +35,21 @@ type AddEvent struct {
 	Size  string `json:",omitempty"`
 }
 
-func CalcFileHash(file string) (string, error) {
+func CalcFileHash(file string, cidVersion int) (string, error) {
 
 	// file := "/Volumes/Code/Users/zzzhr/Downloads/心电图一本通 2015.pdf"
-	f, err := os.Open(file)
+
+	nd, err := AddFileToNode(file, cidVersion)
 	if err != nil {
 		return "", err
+	}
+	return nd.Cid().String(), nil
+}
+
+func AddFileToNode(file string, cidVersion int) (ipld.Node, error) {
+	f, err := os.Open(file)
+	if err != nil {
+		return nil, err
 	}
 	defer f.Close()
 	hashFunStr := "sha2-256"
@@ -69,6 +77,7 @@ func CalcFileHash(file string) (string, error) {
 
 		options.Unixfs.Progress(progress),
 		options.Unixfs.Silent(silent),
+		options.Unixfs.CidVersion(cidVersion),
 	}
 
 	//opts = append(opts, nil) // events option placeholder
@@ -79,9 +88,9 @@ func CalcFileHash(file string) (string, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	dstore := dssync.MutexWrap(ds.NewMapDatastore())
-	bstore := blockstore.NewBlockstore(dstore)
-	bserv := bs.New(bstore, offline.Exchange(bstore))
+	dstore := dssync.MutexWrap(ds.NewMapDatastore())  // dssync.MutexWrap(ds.NewMapDatastore())
+	bstore := blockstore.NewBlockstore(dstore)        // bserv.New(blockstore.NewBlockstore(ds), nil)
+	bserv := bs.New(bstore, offline.Exchange(bstore)) // 	bs := bserv.New(blockstore.NewBlockstore(ds), nil)
 
 	dserv := mdag.NewDAGService(bserv)
 
@@ -89,12 +98,12 @@ func CalcFileHash(file string) (string, error) {
 
 	fileAdder, err := coreunix.NewAdder(ctx, p, blockstore.NewGCLocker(), dserv)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	settings, prefix, err := options.UnixfsAddOptions(opts...)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	fileAdder.Chunker = settings.Chunker
@@ -107,6 +116,7 @@ func CalcFileHash(file string) (string, error) {
 	fileAdder.RawLeaves = settings.RawLeaves
 	fileAdder.NoCopy = settings.NoCopy
 	fileAdder.CidBuilder = prefix
+	//fileAdder.CidBuilder
 
 	switch settings.Layout {
 	case options.BalancedLayout:
@@ -115,7 +125,7 @@ func CalcFileHash(file string) (string, error) {
 		fileAdder.Trickle = true
 	default:
 		// log.Fatalf("unknown layout: %d", settings.Layout)
-		return "", errors.New(fmt.Sprintf("unknown layout: %d", settings.Layout))
+		return nil, fmt.Errorf("unknown layout: %d", settings.Layout)
 	}
 
 	if settings.Inline {
@@ -126,26 +136,21 @@ func CalcFileHash(file string) (string, error) {
 	}
 
 	//if settings.OnlyHash {
-	md := dagtest.Mock()
+	// md := dagtest.Mock()
 	emptyDirNode := ft.EmptyDirNode()
 	// Use the same prefix for the "empty" MFS root as for the file adder.
 	emptyDirNode.SetCidBuilder(fileAdder.CidBuilder)
-	mr, err := mfs.NewRoot(ctx, md, emptyDirNode, nil)
+	mr, err := mfs.NewRoot(ctx, dserv, emptyDirNode, nil)
 	if err != nil {
 		// log.Fatalf("can't create new root: %v", err)
-		return "", err
+		return nil, err
 	}
 
 	fileAdder.SetMfsRoot(mr)
 	//}
 
-	nd, err := fileAdder.AddAllAndPin(ctx, files.NewReaderFile(f))
-	if err != nil {
-		// log.Fatalf("can't create new root -- NDDD: %v", err)
-		return "", err
-	}
+	return fileAdder.AddAllAndPin(ctx, files.NewReaderFile(f))
 
-	return nd.Cid().String(), nil
 }
 
 // syncDagService is used by the Adder to ensure blocks get persisted to the underlying datastore
