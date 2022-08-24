@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	bs "github.com/ipfs/go-blockservice"
-	"github.com/ipfs/go-mfs"
+	"github.com/zzzhr1990/go-ipfs-util/mfs"
 
 	// cmds "github.com/ipfs/go-ipfs-cmds"
 	files "github.com/ipfs/go-ipfs-files"
@@ -20,12 +20,12 @@ import (
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	"github.com/ipfs/go-ipfs-pinner/dspinner"
-	"github.com/ipfs/go-ipfs/core/coreunix"
 	ipld "github.com/ipfs/go-ipld-format"
 	mdag "github.com/ipfs/go-merkledag"
-	ft "github.com/ipfs/go-unixfs"
 	"github.com/ipfs/interface-go-ipfs-core/options"
 	mh "github.com/multiformats/go-multihash"
+	"github.com/zzzhr1990/go-ipfs-util/ipfs/core/coreunix"
+	ft "github.com/zzzhr1990/go-ipfs-util/unixfs"
 )
 
 type AddEvent struct {

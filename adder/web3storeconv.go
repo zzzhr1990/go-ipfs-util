@@ -11,11 +11,11 @@ import (
 	posinfo "github.com/ipfs/go-ipfs-posinfo"
 	ipld "github.com/ipfs/go-ipld-format"
 	dag "github.com/ipfs/go-merkledag"
-	mfs "github.com/ipfs/go-mfs"
-	unixfs "github.com/ipfs/go-unixfs"
-	balanced "github.com/ipfs/go-unixfs/importer/balanced"
-	ihelper "github.com/ipfs/go-unixfs/importer/helpers"
 	w3fs "github.com/zzzhr1990/go-ipfs-util/fs"
+	mfs "github.com/zzzhr1990/go-ipfs-util/mfs"
+	unixfs "github.com/zzzhr1990/go-ipfs-util/unixfs"
+	balanced "github.com/zzzhr1990/go-ipfs-util/unixfs/importer/balanced"
+	ihelper "github.com/zzzhr1990/go-ipfs-util/unixfs/importer/helpers"
 )
 
 const chnkr = "size-1048576"
