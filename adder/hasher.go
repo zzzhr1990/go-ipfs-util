@@ -31,8 +31,8 @@ func HashFile(ctx context.Context, filename string, path string) (ipld.Node, err
 	if err != nil {
 		return nil, err
 	}
-	dstore := dssync.MutexWrap(ds.NewMapDatastore()) // dssync.MutexWrap(ds.NewMapDatastore())
-	bstore := blockstore.NewBlockstore(dstore)       // bserv.New(blockstore.NewBlockstore(ds), nil)
+	dstore := dssync.MutexWrap(ds.NewNullDatastore()) // dssync.MutexWrap(ds.NewMapDatastore())
+	bstore := blockstore.NewBlockstore(dstore)        // bserv.New(blockstore.NewBlockstore(ds), nil)
 	bserv := bs.New(bstore, offline.Exchange(bstore))
 
 	dag := merkledag.NewDAGService(bserv)

@@ -1,5 +1,6 @@
 package hashcalc
 
+/*
 import (
 	"context"
 	"fmt"
@@ -20,11 +21,11 @@ import (
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	"github.com/ipfs/go-ipfs-pinner/dspinner"
-	"github.com/ipfs/go-ipfs/core/coreunix"
 	ipld "github.com/ipfs/go-ipld-format"
 	mdag "github.com/ipfs/go-merkledag"
 	ft "github.com/ipfs/go-unixfs"
 	"github.com/ipfs/interface-go-ipfs-core/options"
+	"github.com/ipfs/kubo/core/coreunix"
 	mh "github.com/multiformats/go-multihash"
 )
 
@@ -88,7 +89,7 @@ func AddFileToNode(file string, cidVersion int) (ipld.Node, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	dstore := dssync.MutexWrap(ds.NewMapDatastore())  // dssync.MutexWrap(ds.NewMapDatastore())
+	dstore := dssync.MutexWrap(ds.NewNullDatastore()) // dssync.MutexWrap(ds.NewMapDatastore())
 	bstore := blockstore.NewBlockstore(dstore)        // bserv.New(blockstore.NewBlockstore(ds), nil)
 	bserv := bs.New(bstore, offline.Exchange(bstore)) // 	bs := bserv.New(blockstore.NewBlockstore(ds), nil)
 
@@ -154,3 +155,4 @@ func AddFileToNode(file string, cidVersion int) (ipld.Node, error) {
 }
 
 // syncDagService is used by the Adder to ensure blocks get persisted to the underlying datastore
+*/

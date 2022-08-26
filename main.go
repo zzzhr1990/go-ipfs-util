@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/zzzhr1990/go-ipfs-util/adder"
-	"github.com/zzzhr1990/go-ipfs-util/hashcalc"
 )
 
 func main() {
@@ -29,7 +28,7 @@ func main() {
 	println("----------------------------------------------------")
 
 	fmt.Println(fileNode.Cid().String())
-	cs, _ := hashcalc.CalcFileHash(filePath, 0)
-	println("----------------------------------------------------")
-	println(cs)
+	//cs, _ := hashcalc.CalcFileHash(filePath, 0)
+	//println("----------------------------------------------------")
+	//println(cs)
 }
