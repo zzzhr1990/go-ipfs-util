@@ -1,5 +1,6 @@
 package adder
 
+/*
 import (
 	"context"
 	"fmt"
@@ -266,3 +267,4 @@ func (adder *Adder) addDir(path string, dir fs.File, dirname string, fsys fs.FS,
 	}
 	return nil
 }
+*/

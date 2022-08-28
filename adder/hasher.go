@@ -1,5 +1,6 @@
 package adder
 
+/*
 import (
 	"context"
 	"os"
@@ -77,7 +78,8 @@ func HashFile(ctx context.Context, filename string, path string) (ipld.Node, err
 		}()
 		putCar(ctx, carReader, hash1)
 		//}
-	*/
+*/
+/*
 	return root, nil
 }
 

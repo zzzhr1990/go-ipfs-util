@@ -90,7 +90,7 @@ func (s *EmptyBlockstore) Put(ctx context.Context, b blocks.Block) error {
 				if s.wcsChunkRead >= s.wcsChunkSize {
 					s.wcsChunkRead = 0
 				}
-				if s.wcsChunkRead == 0 {
+				if s.wcsChunkRead == 0 && s.wcsBlockCount > 1 {
 					s.wcsBlockHash.Reset()
 				}
 				bufferSize := int64(len(dataToRead))
