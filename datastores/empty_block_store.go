@@ -37,11 +37,11 @@ type EmptyBlockstore struct {
 	mutex              sync.Mutex
 	fileSize           int64
 	//countBlocksSize    int64
-	nodeMap  map[string]blocks.Block
-	blockIDs []string
+	nodeMap map[string]blocks.Block
+	ctx     context.Context
 }
 
-func NewEmptyBlockstore(fileSize int64) *EmptyBlockstore {
+func NewEmptyBlockstore(fileSize int64, ctx context.Context) *EmptyBlockstore {
 	var wcsBlockSize int64 = 4 * 1024 * 1024
 	wcsBlockCount := (fileSize + wcsBlockSize - 1) / wcsBlockSize // round up (5+2-1)/2=3, (4+2-1)/2=2 (0+2-1)/2=0 (1+2-1)/2=1
 	return &EmptyBlockstore{
@@ -58,7 +58,8 @@ func NewEmptyBlockstore(fileSize int64) *EmptyBlockstore {
 		wcsBlockCount:    wcsBlockCount,
 		wcsBlockHashList: make([]byte, 0, wcsBlockCount*sha1.Size),
 		nodeMap:          make(map[string]blocks.Block),
-		blockIDs:         make([]string, 0, (fileSize+1048576-1)/1048576),
+		// blockIDs:         make([]string, 0, (fileSize+1048576-1)/1048576),
+		ctx: ctx,
 	}
 }
 
@@ -80,6 +81,8 @@ func (s *EmptyBlockstore) GetSize(context.Context, cid.Cid) (int, error) {
 // Put puts a given block to the underlying datastore
 func (s *EmptyBlockstore) Put(ctx context.Context, b blocks.Block) error {
 	// context.WithCancel(ctx)
+	cctx, cancel := context.WithCancel(s.ctx)
+	defer cancel()
 	value := b.RawData()
 	if b.Cid().Prefix().Codec == cid.Raw {
 		var wg sync.WaitGroup
@@ -158,7 +161,19 @@ func (s *EmptyBlockstore) Put(ctx context.Context, b blocks.Block) error {
 			}
 			wg.Done()
 		}()
-		wg.Wait()
+		ch := make(chan struct{}, 1)
+		go func() {
+			wg.Wait()
+			ch <- struct{}{}
+		}()
+
+		select {
+		case <-ch:
+			break
+		case <-cctx.Done():
+			wg.Wait()
+			return s.ctx.Err()
+		}
 
 		if s.headerLeft > 0 {
 			//return
@@ -171,7 +186,7 @@ func (s *EmptyBlockstore) Put(ctx context.Context, b blocks.Block) error {
 			s.headerLeft -= needRead
 		}
 		//s.countBlocksSize += int64(len(b.RawData()))
-		s.blockIDs = append(s.blockIDs, b.Cid().String())
+		// s.blockIDs = append(s.blockIDs, b.Cid().String())
 	} else {
 
 		s.nodeMap[b.Cid().String()] = b
@@ -190,10 +205,10 @@ func (s *EmptyBlockstore) Reslove(cidString string, intptr *int64, currentBlockI
 			_, ok := s.nodeMap[link.Cid.String()]
 			if !ok {
 				*intptr += int64(link.Size)
-				currentID := *currentBlockIDPtr
-				if s.blockIDs[currentID] != link.Cid.String() {
-					panic("not equal")
-				}
+				//currentID := *currentBlockIDPtr
+				//if s.blockIDs[currentID] != link.Cid.String() {
+				//	panic("not equal")
+				//}
 				*currentBlockIDPtr++
 			}
 			err := s.Reslove(link.Cid.String(), intptr, currentBlockIDPtr)
@@ -302,6 +317,10 @@ func (s *EmptyBlockstore) SumXL() []byte {
 	s.cachedXLHash = s.totalXLHash.Sum(nil)
 
 	return s.cachedXLHash
+}
+
+func (s *EmptyBlockstore) NodeMap() map[string]blocks.Block {
+	return s.nodeMap
 }
 
 func (s *EmptyBlockstore) SumWcsEtag() string {

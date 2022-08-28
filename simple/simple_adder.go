@@ -1,6 +1,7 @@
 package simple
 
 import (
+	"context"
 	"os"
 
 	chunker "github.com/ipfs/go-ipfs-chunker"
@@ -13,7 +14,6 @@ import (
 	// "github.com/ipld/go-ipld-prime"
 	bs "github.com/ipfs/go-blockservice"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
-	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/ipfs/go-merkledag"
 )
 
@@ -26,30 +26,38 @@ var cidBuilder = merkledag.V1CidPrefix()
 
 // var liveCacheSize = uint64(256 << 10)
 
-type SimpleAdder struct {
+type SimpleAddResult struct {
+	RootID      string
+	WcsEtag     string
+	SHA1        []byte
+	HeadSHA1    []byte
+	SpecialSHA1 []byte
+	FileSize    int64
+	NodeMap     map[string][]byte
 }
 
-func Add(path string) (ipld.Node, *datastores.EmptyBlockstore, error) {
+func Add(ctx context.Context, path string) (*SimpleAddResult, error) {
+
 	fileInfo, err := os.Stat(path)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	reader, err := os.Open(path)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	defer reader.Close()
 
 	//datast := datastores.NewHashDatastore(fileInfo.Size())
 	//dstore := dssync.MutexWrap(datast)         // dssync.MutexWrap(ds.NewMapDatastore())
 	//bstore := blockstore.NewBlockstore(dstore) // bserv.New(blockstore.NewBlockstore(ds), nil)
-	bstore := datastores.NewEmptyBlockstore(fileInfo.Size())
+	bstore := datastores.NewEmptyBlockstore(fileInfo.Size(), ctx)
 	bserv := bs.New(bstore, offline.Exchange(bstore))
 
 	dag := merkledag.NewDAGService(bserv)
 	chnk, err := chunker.FromString(reader, chnkr)
 	if err != nil {
-		return nil, bstore, err
+		return nil, err
 	}
 	params := ihelper.DagBuilderParams{
 		Dagserv:    dag,
@@ -61,12 +69,28 @@ func Add(path string) (ipld.Node, *datastores.EmptyBlockstore, error) {
 
 	db, err := params.New(chnk)
 	if err != nil {
-		return nil, bstore, err
+		return nil, err
 	}
 
 	nd, err := balanced.Layout(db)
 	if err != nil {
-		return nil, bstore, err
+		return nil, err
 	}
-	return nd, bstore, nil
+
+	nodemap := bstore.NodeMap()
+	result := &SimpleAddResult{
+		RootID:      nd.Cid().String(),
+		WcsEtag:     bstore.SumWcsEtag(),
+		SHA1:        bstore.FileSHA1(),
+		HeadSHA1:    bstore.HeadSHA1(),
+		FileSize:    fileInfo.Size(),
+		SpecialSHA1: bstore.SumXL(),
+		NodeMap:     make(map[string][]byte, len(nodemap)),
+	}
+
+	for k, v := range nodemap {
+		result.NodeMap[k] = v.RawData()
+	}
+
+	return result, nil
 }

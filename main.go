@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/zzzhr1990/go-ipfs-util/datastores"
 	"github.com/zzzhr1990/go-ipfs-util/simple"
@@ -25,12 +27,12 @@ func Xmain() {
 	}
 	//fmt.Println(path, info.Size())
 	if !info.IsDir() {
-		nd, is, err := simple.Add(path)
+		addResult, err := simple.Add(context.Background(), path)
 		if err != nil {
 			println(err.Error())
 			os.Exit(2)
 		}
-		xlHash1 := hex.EncodeToString(is.SumXL())
+		xlHash1 := hex.EncodeToString(addResult.SpecialSHA1)
 		xlHash2, err := datastores.CalcFileGcid(path)
 		if err != nil {
 			println(err.Error())
@@ -45,16 +47,13 @@ func Xmain() {
 		}
 
 		etag, _ := datastores.GetEtag(path)
-		if is.SumWcsEtag() != etag {
+		if addResult.WcsEtag != etag {
 			println("not equal etag")
 			println(etag)
-			println(is.SumWcsEtag())
+			println(addResult.WcsEtag)
 			println(path)
 			os.Exit(3)
 		}
-		var ct int64 = 0
-		var cs int = 0
-		is.Reslove(nd.Cid().String(), &ct, &cs)
 
 	}
 	//fileNode, err := adder.HashFile(context.Background(), "", filePath)
@@ -105,7 +104,8 @@ func main() {
 		println("not dir")
 		return
 	}
-
+	ccrx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer cancel()
 	err = filepath.Walk(filePath,
 		func(path string, info os.FileInfo, err error) error {
 			if err != nil {
@@ -114,17 +114,16 @@ func main() {
 			}
 			//fmt.Println(path, info.Size())
 			if !info.IsDir() && info.Mode()&os.ModeSymlink != os.ModeSymlink {
-				nd, is, err := simple.Add(path)
+				addResult, err := simple.Add(ccrx, path)
 				if err != nil {
-					println(err.Error())
-					println(info.IsDir())
+					println("file: ", path, err.Error())
 					return nil
 				}
-				xlHash1 := hex.EncodeToString(is.SumXL())
+				xlHash1 := hex.EncodeToString(addResult.SpecialSHA1)
 				xlHash2, err := datastores.CalcFileGcid(path)
 				if err != nil {
 					println(err.Error())
-					return err
+					os.Exit(3)
 				}
 				if xlHash1 != xlHash2 {
 					println("not equal")
@@ -135,16 +134,13 @@ func main() {
 				}
 
 				etag, _ := datastores.GetEtag(path)
-				if is.SumWcsEtag() != etag {
+				if addResult.WcsEtag != etag {
 					println("not equal etag")
 					println(etag)
-					println(is.SumWcsEtag())
+					println(addResult.WcsEtag)
 					println(path)
 					os.Exit(3)
 				}
-				var ct int64 = 0
-				var cs int = 0
-				is.Reslove(nd.Cid().String(), &ct, &cs)
 
 			}
 			return nil
